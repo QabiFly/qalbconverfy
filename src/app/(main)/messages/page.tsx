@@ -7,7 +7,7 @@ import { queryKeys } from "@/constants/query-keys";
 import { PageSpinner, EmptyState, ErrorState } from "@/components/ui/states";
 import { Avatar } from "@/components/ui/avatar";
 import { APP_ROUTES } from "@/constants/app-routes";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, PenLine } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
 
 export default function MessagesPage() {
@@ -28,14 +28,32 @@ export default function MessagesPage() {
       <EmptyState
         icon={<MessageCircle className="h-5 w-5" />}
         title="No conversations yet"
-        description="Start a direct message from someone's profile."
+        description="Start a direct message from someone's profile or create a new chat."
+        action={
+          <Link
+            href={APP_ROUTES.newMessage}
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-accent px-4 text-sm font-medium text-accent-foreground"
+          >
+            <PenLine className="h-4 w-4" />
+            New message
+          </Link>
+        }
       />
     );
   }
   
   return (
     <div className="mx-auto max-w-xl px-2 py-4">
-      <h1 className="mb-3 px-2 text-lg font-semibold text-text-primary">Messages</h1>
+      <div className="mb-3 flex items-center justify-between px-2">
+        <h1 className="text-lg font-semibold text-text-primary">Messages</h1>
+        <Link
+          href={APP_ROUTES.newMessage}
+          className="inline-flex h-9 items-center gap-2 rounded-xl border border-border bg-surface-raised px-3 text-sm text-text-primary hover:bg-surface-hover"
+        >
+          <PenLine className="h-4 w-4" />
+          New
+        </Link>
+      </div>
       <div className="flex flex-col">
         {conversations.map((conv) => {
           const otherParticipant = conv.participants?.find((p) => p.user.id !== currentUser?.id)?.user;

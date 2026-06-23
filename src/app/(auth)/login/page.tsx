@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, LoginFormValues } from "@/lib/validation/auth-schemas";
 import { useAuth } from "@/providers/auth-provider";
+import { useRouter } from "next/navigation";
 import { useRedirectIfAuthenticated } from "@/hooks/use-require-auth";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,7 @@ export default function LoginPage() {
   const { isHydrating } = useRedirectIfAuthenticated();
   const { login } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const router = useRouter();
   const {
     register,
     handleSubmit,
@@ -25,22 +26,22 @@ export default function LoginPage() {
   } = useForm < LoginFormValues > ({ resolver: zodResolver(loginSchema) });
   
   const onSubmit = async (values: LoginFormValues) => {
-    setIsSubmitting(true);
-    try {
-      await login(values);
-    } catch (error) {
-      const fieldErrors = extractFieldErrors(error);
-      if (fieldErrors) {
-        for (const [field, message] of Object.entries(fieldErrors)) {
-          if (field === "identifier" || field === "password") {
-            setError(field, { message });
-          }
+  setIsSubmitting(true);
+  try {
+    await login(values);
+  } catch (error) {
+    const fieldErrors = extractFieldErrors(error);
+    if (fieldErrors) {
+      for (const [field, message] of Object.entries(fieldErrors)) {
+        if (field === "identifier" || field === "password") {
+          setError(field, { message });
         }
       }
-    } finally {
-      setIsSubmitting(false);
     }
-  };
+  } finally {
+    setIsSubmitting(false);
+  }
+};
   
   if (isHydrating) return null;
   

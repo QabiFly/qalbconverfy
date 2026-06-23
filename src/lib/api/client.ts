@@ -27,7 +27,7 @@ function resolveBaseUrl(): string {
 }
 
 interface RetryableRequestConfig extends InternalAxiosRequestConfig {
-  _retried ? : boolean;
+  _retried?: boolean;
 }
 
 export const apiClient: AxiosInstance = axios.create({
@@ -49,24 +49,25 @@ apiClient.interceptors.request.use((config) => {
  * refresh call against ENDPOINTS.refresh() ("/api/v1/auth/refresh/",
  * verbatim from api_endpoints.txt) instead of each firing their own.
  */
-let refreshPromise: Promise < string > | null = null;
+let refreshPromise: Promise<string> | null = null;
 
-async function performRefresh(): Promise < string > {
+async function performRefresh(): Promise<string> {
   const refreshToken = tokenStorage.getRefreshToken();
   if (!refreshToken) {
     throw new Error("No refresh token available.");
   }
-  
-  const response = await axios.post < { data: { access: string;refresh: string } } > (
-    `${resolveBaseUrl()}${ENDPOINTS.refresh()}`, { refresh: refreshToken }
+
+  const response = await axios.post<{ data: { access: string; refresh: string } }>(
+    `${resolveBaseUrl()}${ENDPOINTS.refresh()}`,
+    { refresh: refreshToken }
   );
-  
+
   const tokens = response.data.data;
   tokenStorage.setTokens(tokens.access, tokens.refresh);
   return tokens.access;
 }
 
-const sessionExpiredListeners = new Set < () => void > ();
+const sessionExpiredListeners = new Set<() => void>();
 
 export function onSessionExpired(listener: () => void): () => void {
   sessionExpiredListeners.add(listener);
@@ -82,21 +83,21 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as RetryableRequestConfig | undefined;
-    
+
     const isUnauthorized = error.response?.status === 401;
     const isRefreshCall = originalRequest?.url?.includes(ENDPOINTS.refresh());
-    
+
     if (!isUnauthorized || !originalRequest || isRefreshCall) {
       return Promise.reject(error);
     }
-    
+
     if (originalRequest._retried) {
       broadcastSessionExpired();
       return Promise.reject(error);
     }
-    
+
     originalRequest._retried = true;
-    
+
     try {
       if (!refreshPromise) {
         refreshPromise = performRefresh().finally(() => {
@@ -120,25 +121,31 @@ apiClient.interceptors.response.use(
  * any field is missing rather than throwing.
  */
 export interface ApiErrorEnvelope {
-  success ? : false;
-  error ? : {
-    detail ? : string;
-    code ? : string;
-    errors ? : Record < string,
-    string[] > ;
+  success?: false;
+  error?: {
+    detail?: string;
+    code?: string;
+    errors?: Record<string, string[]>;
   };
 }
 
 export function extractErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const data = error.response?.data as ApiErrorEnvelope | undefined;
+
     if (data?.error?.detail) return data.error.detail;
-    
+
     if (data?.error?.errors) {
-      const firstField = Object.values(data.error.errors)[0];
-      if (firstField && firstField.length > 0) return firstField[0];
+      const errorsObj = data.error.errors;
+      const values = Object.values(errorsObj);
+
+      for (const value of values) {
+        if (Array.isArray(value) && value.length > 0 && typeof value[0] === "string") {
+          return value[0];
+        }
+      }
     }
-    
+
     if (error.code === "ECONNABORTED") {
       return "The request timed out. Please check your connection and try again.";
     }
@@ -150,19 +157,21 @@ export function extractErrorMessage(error: unknown): string {
     }
     return `Something went wrong (${error.response.status}). Please try again.`;
   }
-  
+
   if (error instanceof Error) return error.message;
   return "An unexpected error occurred.";
 }
 
-export function extractFieldErrors(error: unknown): Record < string, string > | null {
+export function extractFieldErrors(error: unknown): Record<string, string> | null {
   if (!axios.isAxiosError(error)) return null;
   const data = error.response?.data as ApiErrorEnvelope | undefined;
   if (!data?.error?.errors) return null;
-  
-  const fieldErrors: Record < string, string > = {};
+
+  const fieldErrors: Record<string, string> = {};
   for (const [field, messages] of Object.entries(data.error.errors)) {
-    if (messages.length > 0) fieldErrors[field] = messages[0];
+    if (Array.isArray(messages) && messages.length > 0 && typeof messages[0] === "string") {
+      fieldErrors[field] = messages[0];
+    }
   }
   return fieldErrors;
 }

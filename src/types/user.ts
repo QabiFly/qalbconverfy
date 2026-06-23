@@ -53,7 +53,9 @@ export interface RegisterPayload {
 
 export interface LoginResponseData {
   user: UserProfile;
-  tokens: AuthTokens;
+  access?: string;
+  refresh?: string;
+  tokens?: AuthTokens;
 }
 
 export interface RegisterResponseData {

@@ -57,18 +57,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   
   const login = useCallback(
     async (payload: LoginPayload) => {
-        try {
-          const { user, tokens } = await authService.login(payload);
-          tokenStorage.setTokens(tokens.access, tokens.refresh);
-          setUser(user);
-          toast.success(`Welcome back, ${user.username}.`);
-          router.push(APP_ROUTES.home);
-        } catch (error) {
-          toast.error("Login failed", extractErrorMessage(error));
-          throw error;
+      try {
+        const response = await authService.login(payload);
+
+        const access = response.access ?? response.tokens?.access;
+        const refresh = response.refresh ?? response.tokens?.refresh;
+
+        if (!response.user || !access || !refresh) {
+          throw new Error("Invalid login response from server.");
         }
-      },
-      [setUser, router]
+
+        tokenStorage.setTokens(access, refresh);
+        setUser(response.user);
+        setHydrating(false);
+
+        toast.success(`Welcome back, ${response.user.username}.`);
+
+        router.replace(APP_ROUTES.home);
+        router.refresh();
+      } catch (error) {
+        toast.error("Login failed", extractErrorMessage(error));
+        throw error;
+      }
+    },
+    [setUser, setHydrating, router]
   );
   
   const register = useCallback(
